@@ -1,0 +1,5 @@
+.idea
+postgresql_data/log/
+logs/app/
+logs/nginx/
+mysql_data

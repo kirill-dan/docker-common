@@ -1,0 +1,160 @@
+version: '3.2'
+services: 
+    docker-php:
+        build:
+            context: ./php-fpm
+            dockerfile: Dockerfile
+            args:
+                PROJECT_NAME: ${PROJECT_NAME}
+                PROJECT_DOMEN: ${PROJECT_DOMEN}
+        image: docker/php-fpm
+        container_name: php-${PROJECT_NAME}
+        expose:
+            - 9001
+        volumes:
+            - ../project:/var/www/${PROJECT_DOMEN}
+        command: php-fpm7.1 -F
+        networks:
+            - docker-network
+
+    docker-nginx:
+        build:
+            context: ./nginx
+            dockerfile: Dockerfile
+            args:
+                PROJECT_NAME: ${PROJECT_NAME}
+                PROJECT_DOMEN: ${PROJECT_DOMEN}
+        image: docker/nginx
+        container_name: nginx-${PROJECT_NAME}
+        ports:
+            - 80:80
+        volumes:
+            - ../project:/var/www/${PROJECT_NAME}
+            - ./logs/nginx:/var/log/nginx
+        networks:
+           - docker-network
+        depends_on:
+            - docker-php
+
+    docker-postgresql:
+        image: postgres
+        container_name: postrgesql-${PROJECT_NAME}
+        environment:
+          POSTGRES_USER: ${POSTGRES_USER}
+          POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+          POSTGRES_DB: ${POSTGRES_DB}
+        ports:
+            - 5432:5432
+        volumes:
+            - postgresql_data:/var/lib/postgresql
+            - ./logs/postgres:/var/log/postgresql
+        restart: always
+        networks:
+           - docker-network
+
+    docker-pgadmin:
+        image: fenglc/pgadmin4
+        container_name: pgadmin-${PROJECT_NAME}
+        links:
+            - docker-postgresql:docker-postgresql
+        environment:
+          DEFAULT_USER: ${PGADMIN_USER}
+          DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+        ports:
+            - 5050:5050
+        restart: unless-stopped
+        volumes:
+            - ./data/pgadmin:/root/.pgadmin
+        depends_on:
+            - docker-postgresql
+        networks:
+            - docker-network
+
+    docker-adminer:
+        image: adminer
+        container_name: adminer-${PROJECT_NAME}
+        ports:
+            - 8888:8080
+        restart: always
+        networks:
+            - docker-network
+
+    docker-mysql:
+        image: mysql
+        container_name: mysql-${PROJECT_NAME}
+        environment:
+           MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+           MYSQL_DATABASE: ${MYSQL_DATABASE}
+           MYSQL_USER: ${MYSQL_USER}
+           MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+        ports:
+            - 3306:3306
+        restart: always
+        volumes:
+           - ./data/mysql_data:/var/lib/mysql
+           - ./logs/mysql/:/var/log/mysql
+           - ./mysql/my.cnf:/etc/mysql/my.cnf
+        networks:
+           - docker-network
+
+    docker-phpmyadmin:
+        image: phpmyadmin/phpmyadmin
+        container_name: phpmyadmin-${PROJECT_NAME}
+        environment:
+           PMA_HOST: mysql-${PROJECT_NAME}
+        ports:
+            - 8080:80
+        restart: always
+        depends_on:
+            - docker-mysql
+        networks:
+            - docker-network
+
+    docker-mailcatcher:
+        build:
+            context: ./mailcatcher
+            dockerfile: Dockerfile
+        image: docker/mailcatcher
+        container_name: mailcatcher-${PROJECT_NAME}
+        ports:
+            - 1025:${SMTP_PORT}
+            - 1080:${HTTP_PORT}
+        command: mailcatcher --smtp-ip=0.0.0.0 --http-ip=0.0.0.0 --http-port=${HTTP_PORT} --smtp-port=${SMTP_PORT} --foreground
+        networks:
+           - docker-network
+
+    docker-redis:
+        container_name: redis-${PROJECT_NAME}
+        image: redis
+        ports:
+            - 6379:6379
+        volumes:
+            - ./data/redis_data:/data/db
+            - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+        networks:
+            - docker-network
+
+    docker-node:
+        image: node:9
+        container_name: node-${PROJECT_NAME}
+        user: node
+        working_dir: /home/node/app
+        environment:
+            - NODE_ENV=production
+        volumes:
+            - ../node-app:/home/node/app
+        ports:
+            - 3000:3000
+        command: npm start
+        networks:
+             - docker-network
+
+networks: 
+    docker-network:
+        driver: bridge          
+
+volumes:
+    data:
+        driver: local
+    postgresql_data:
+        driver: local
