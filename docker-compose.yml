@@ -13,7 +13,7 @@ services:
             - 9001
         volumes:
             - ../project:/var/www/${PROJECT_DOMEN}
-        command: php-fpm7.1 -F
+        command: php-fpm7.2 -F
         networks:
             - docker-network
 
@@ -26,6 +26,7 @@ services:
                 PROJECT_DOMEN: ${PROJECT_DOMEN}
         image: docker/nginx
         container_name: nginx-${PROJECT_NAME}
+        restart: always
         ports:
             - 80:80
         volumes:
