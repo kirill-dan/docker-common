@@ -30,7 +30,7 @@ services:
         ports:
             - 80:80
         volumes:
-            - ../project:/var/www/${PROJECT_NAME}
+            - ../project:/var/www/${PROJECT_DOMEN}
             - ./logs/nginx:/var/log/nginx
         networks:
            - docker-network
