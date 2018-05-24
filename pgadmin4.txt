@@ -1,0 +1,77 @@
+Для начала необходимо установить Python 3.6:
+
+sudo apt update
+sudo apt install python3.6
+sudo apt install python3.6-dev
+sudo apt install python3.6-venv
+wget https://bootstrap.pypa.io/get-pip.py
+sudo python3.6 get-pip.py
+sudo ln -s /usr/bin/python3.6 /usr/local/bin/python3
+sudo ln -s /usr/local/bin/pip /usr/local/bin/pip3
+
+Далее создаем виртуальное окружение.
+
+Выполняем следующие команды:
+
+export VENV=~/env
+
+Если еще не установлено виртуальное окружение для Питона, то:
+python3.6 -m venv $VENV
+
+Активируем виртуальное окружение:
+source $VENV/bin/activate
+
+Идем в папку окружения и загружаем/устанавливаем пакеты:
+cd $VENV
+wget https://ftp.postgresql.org/pub/pgadmin/pgadmin4/v3.0/pip/pgadmin4-3.0-py2.py3-none-any.whl
+pip install wheel flask
+pip install pgadmin4*.whl
+
+Заменяем в файле ~/env/lib/python3.6/site-packages/pgadmin4/config.py строку:
+SERVER_MODE = True
+
+на следующую:
+SERVER_MODE = False
+
+Запускаем инсталлятор, что создаст в домашней папке базу настроек:
+python3 ~/env/lib/python3.6/site-packages/pgadmin4/setup.py
+
+Проверяем что всё работает, запустив в ручном режиме из консоли:
+python3 ~/env/lib/python3.6/site-packages/pgadmin4/pgAdmin4.py
+
+Для запуска приложения в виде сервиса делаем следующее:
+создаём файл сервиса
+sudo pluma /etc/systemd/system/pgadmin4.service
+
+со следующим содержанием (имя пользователя в пути после home/ замените на свое, плюс измените пользователя и группу на свои):
+[Unit]
+Description=Pgadmin4 Service  
+After=network.target
+
+[Service]
+User=kirill
+Group=kirill
+WorkingDirectory=/home/kirill/env/
+Environment="PATH=/home/kirill/env/bin"
+ExecStart="/home/kirill/env/lib/python3.6/site-packages/pgadmin4/pgAdmin4.py"
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+
+И отредактируем сам файл запуска ~/env/lib/python3.6/site-packages/pgadmin4/pgAdmin4.py, добавив первой строчкой следующую запись:
+
+#!/usr/bin/env python
+
+А также необходимо дать право исполнения этому файлу:
+
+chmod +x ~/env/lib/python3.6/site-packages/pgadmin4/pgAdmin4.py
+
+Теперь перегружаем systemd и включаем как сервис:
+sudo systemctl daemon-reload
+sudo systemctl enable pgadmin4
+
+Запускаем наш pgAdmin4:
+sudo systemctl start pgadmin4 && sudo systemctl status pgadmin4
+
+Теперь pgAdmin4 будет запускаться при старте системы сам и доступен по URL https://localhost:5050
